@@ -60,7 +60,7 @@ func netInit(connectionLimit int, msgchan chan string) {
 	hostFlag = hostTest()
 	
 	if(!hostFlag) {
-		requestConnections()
+		//requestConnections()
 		sendClientMessage()
 	}
 	
@@ -106,16 +106,17 @@ func sendClientMessage() {
 }
 
  //broadcast availability on port 8876
-func requestConnections() {
+func requestConnections() (bool) {
 	
 		fmt.Println("Client: Sending connection request")
 		conn, err := net.Dial("tcp", ":8876")
 		if err != nil {
 			fmt.Printf("Broadcast error: %v\n", err)
-			return
+			return false
 		}
 		io.WriteString(conn, "Requesting connection")	
 		go readIncomingMessages(conn)	
+        return true
 }
 
 func hostTest() (test bool){
@@ -125,14 +126,16 @@ func hostTest() (test bool){
 	}
 	_, err := net.ListenTCP("tcp", &laddr)
 	if err != nil {
-		fmt.Println("Client!!")
-		test = false
+		test = !requestConnections()
+        if(!test){
+            fmt.Println("Client!!")
+        }
 	} else {
-		fmt.Println("Host!!");
-		test = true	
+		fmt.Println("Host!!")
+		test = true
 	}
 	
-	return test
+	return
 }
 
 // listen for tcp responses on 8876
