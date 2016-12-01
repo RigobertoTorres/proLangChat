@@ -21,8 +21,8 @@ func makeScreen() {
 	rows, cols := stdscr.MaxYX()
 
 	stdscr.Print("Messages:")
-	stdscr.HLine(1, 0, gc.ACS_HLINE, cols)
-	stdscr.HLine(rows-4, 0, gc.ACS_HLINE, cols)
+	stdscr.HLine(1, 0, '-', cols)
+	stdscr.HLine(rows-4, 0, '-', cols)
 	stdscr.Keypad(true)
 	stdscr.NoutRefresh()
 

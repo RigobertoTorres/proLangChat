@@ -77,7 +77,6 @@ func netInit(connectionLimit int) {
 	if hostFlag {
 
 		go acceptConnections()
-		go messageOrg()
 
 	}
 }
@@ -135,10 +134,10 @@ func hostTest() (test bool) {
 	if err != nil {
 		test = !requestConnections()
 		if !test {
-			fmt.Println("Client!!")
+			msgchan <- "Client!!"
 		}
 	} else {
-		fmt.Println("Host!!")
+		msgchan <- "Host!!"
 		test = true
 	}
 
@@ -147,7 +146,7 @@ func hostTest() (test bool) {
 
 // listen for tcp responses on 8876
 func acceptConnections() {
-	fmt.Printf("Listening for connections")
+	msgchan <- "Listening for connections"
 	ln, err := net.Listen("tcp", ":8876")
 	if err != nil {
 		fmt.Printf("Can't accept connections! Err: %v\n", err)
@@ -195,16 +194,6 @@ func receiveClientMessage(msgchan chan<- string, clConn net.Conn) {
 				fmt.Printf("CL2HST: Recieved msg '%s'\n", line)
 
 			}
-		}
-	}
-}
-
-func messageOrg() {
-	for {
-		msg := <-msgchan
-		fmt.Printf("New message: %s\n", msg)
-		for _, c := range cns {
-			io.WriteString(c, msg)
 		}
 	}
 }
