@@ -93,7 +93,6 @@ func sendClientMessage() {
 		buffer.WriteString(string(username))
 		buffer.WriteString(": ")
 		buffer.WriteString(text)
-		msgchan <- buffer.String()
 		conn.Write(buffer.Bytes())
 		conn.Close()
 	}
@@ -182,7 +181,9 @@ func receiveClientMessage(msgchan chan<- string, clConn net.Conn) {
 				//					buffer.WriteString("\n")
 				line := string(buff)
 				msgchan <- line
-
+				for _, c := range cns {
+					io.WriteString(c, line + "\n")
+				}
 			}
 		}
 	}
