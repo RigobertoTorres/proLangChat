@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bufio"
 	"bytes"
 	"fmt"
 	"io"
@@ -56,11 +55,7 @@ func main() {
 		os.Exit(1)
 	}()
 	for {
-		time.Sleep(3 * time.Second)
-		// send test string to all connected clients
-		//for c := range cns {
-		//	fmt.Fprint(cns[c], "Hello fellow client!\n")
-		//}
+		time.Sleep(8 * time.Millisecond)
 	}
 }
 
@@ -83,16 +78,11 @@ func netInit(connectionLimit int) {
 
 // broadcast message on port 8877
 func sendClientMessage() {
-	nameReader := bufio.NewReader(os.Stdin)
-	fmt.Print("What's your username?: ")
-	username, _, _ := nameReader.ReadLine()
-	fmt.Print("Enter text freely to chat: ")
-
+	msgchan <- "What's your username?"
+	username := <-sentchan
+	msgchan <- "Set username to " + username
 	for {
-		reader := bufio.NewReader(os.Stdin)
-		//fmt.Print("Enter text: ")
-		text, _ := reader.ReadString('\n')
-
+		text := <-sentchan
 		//fmt.Println("Sending client message:" + text)
 		conn, err := net.Dial("tcp", ":8877")
 		if err != nil {
@@ -100,13 +90,11 @@ func sendClientMessage() {
 			break
 		}
 		var buffer bytes.Buffer
-		buffer.WriteString("\n")
 		buffer.WriteString(string(username))
 		buffer.WriteString(": ")
 		buffer.WriteString(text)
-		message := buffer.String()
-
-		conn.Write([]byte(message))
+		msgchan <- buffer.String()
+		conn.Write(buffer.Bytes())
 		conn.Close()
 	}
 }
@@ -114,10 +102,10 @@ func sendClientMessage() {
 //broadcast availability on port 8876
 func requestConnections() bool {
 
-	fmt.Println("Client: Sending connection request")
+	msgchan <- "Client: Sending connection request"
 	conn, err := net.Dial("tcp", ":8876")
 	if err != nil {
-		fmt.Printf("Broadcast error: %v\n", err)
+		msgchan <- "Broadcast error"
 		return false
 	}
 	io.WriteString(conn, "Requesting connection")
@@ -149,15 +137,18 @@ func acceptConnections() {
 	msgchan <- "Listening for connections"
 	ln, err := net.Listen("tcp", ":8876")
 	if err != nil {
-		fmt.Printf("Can't accept connections! Err: %v\n", err)
+		msgchan <- "Can't accept connections! Err:"
+		msgchan <- err.Error()
 	} else {
 		for {
 			conn, err1 := ln.Accept()
-			fmt.Println("Accepted tcp connection.")
+			msgchan <- "Accepted tcp connection."
 			if err1 != nil {
-				fmt.Printf("Error accepting connections: %v\n", err1)
+				msgchan <- "Error accepting connections:"
+				msgchan <- err1.Error()
 			} else {
-				fmt.Printf("Accepted tcp connection from %s\n", conn.RemoteAddr())
+				msgchan <- "Accepted tcp connection from:"
+				msgchan <- conn.RemoteAddr().String()
 
 				cns = append(cns, conn)
 				go receiveClientMessage(msgchan, conn)
@@ -168,20 +159,20 @@ func acceptConnections() {
 }
 
 func receiveClientMessage(msgchan chan<- string, clConn net.Conn) {
-	fmt.Println("CL2HST: Listening for clients...")
+	msgchan <- "CL2HST: Listening for clients..."
 	ln, err := net.Listen("tcp", ":8877")
 	if err != nil {
 		fmt.Printf("Error responding to UDP broadcast: %v\n", err)
 	} else {
 		for {
 			buff := make([]byte, 2048)
-			fmt.Println("CL2HST: Accepting client messages...")
+			msgchan <- "CL2HST: Accepting client messages..."
 			conn, err1 := ln.Accept()
 			if err1 != nil {
-				fmt.Println("CL2HOST: Error in accepting client message..")
+				msgchan <- "CL2HOST: Error in accepting client message.."
 			}
 			if err1 == nil {
-				fmt.Println("CL2HST: Reading Client Message...")
+				//fmt.Println("CL2HST: Reading Client Message...")
 				conn.Read(buff)
 				//					var buffer bytes.Buffer
 				//					buffer.WriteString("\n")
@@ -191,7 +182,6 @@ func receiveClientMessage(msgchan chan<- string, clConn net.Conn) {
 				//					buffer.WriteString("\n")
 				line := string(buff)
 				msgchan <- line
-				fmt.Printf("CL2HST: Recieved msg '%s'\n", line)
 
 			}
 		}
